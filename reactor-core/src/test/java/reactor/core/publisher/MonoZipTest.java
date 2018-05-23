@@ -203,9 +203,9 @@ public class MonoZipTest {
 		MonoProcessorFacade<Tuple2<Integer, Integer>> mp = Processors.first();
 		StepVerifier.create(Mono.zip(Mono.just(1), Mono.just(2))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2).isTrue())
 		            .verifyComplete();
 	}
@@ -215,9 +215,9 @@ public class MonoZipTest {
 		MonoProcessorFacade<Tuple3<Integer, Integer, Integer>> mp = Processors.first();
 		StepVerifier.create(Mono.zip(Mono.just(1), Mono.just(2), Mono.just(3))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3).isTrue())
 		            .verifyComplete();
 	}
@@ -231,9 +231,9 @@ public class MonoZipTest {
 				Mono.just(3),
 				Mono.just(4))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3 && v.getT4() == 4).isTrue())
 		            .verifyComplete();
 	}
@@ -248,9 +248,9 @@ public class MonoZipTest {
 				Mono.just(4),
 				Mono.just(5))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3 && v.getT4() == 4 && v.getT5() == 5).isTrue())
 		            .verifyComplete();
 	}
@@ -266,9 +266,9 @@ public class MonoZipTest {
 				Mono.just(5),
 				Mono.just(6))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3 && v.getT4() == 4 && v.getT5() == 5 && v.getT6() == 6).isTrue())
 		            .verifyComplete();
 	}
@@ -279,10 +279,10 @@ public class MonoZipTest {
 		StepVerifier.create(Mono.zip(Mono.<Integer>error(new Exception("test1")),
 				Mono.<Integer>error(new Exception("test2")))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isTrue())
-		            .then(() -> assertThat(mp.isComplete()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isFalse())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isTrue())
+		            .then(() -> assertThat(mp.isComplete()).as("isComplete").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isFalse())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .verifyErrorSatisfies(e -> assertThat(e).hasMessage("test1"));
 	}
 
@@ -292,9 +292,9 @@ public class MonoZipTest {
 		StepVerifier.create(Mono.zip(Mono.fromCallable(() -> 1),
 				Mono.fromCallable(() -> 2))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2).isTrue())
 		            .verifyComplete();
 	}
@@ -304,9 +304,9 @@ public class MonoZipTest {
 		MonoProcessorFacade<Tuple2<Integer, Integer>> mp = Processors.first();
 		StepVerifier.create(Mono.zipDelayError(Mono.just(1), Mono.just(2))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2).isTrue())
 		            .verifyComplete();
 	}
@@ -316,9 +316,9 @@ public class MonoZipTest {
 		MonoProcessorFacade<Tuple3<Integer, Integer, Integer>> mp = Processors.first();
 		StepVerifier.create(Mono.zipDelayError(Mono.just(1), Mono.just(2), Mono.just(3))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3).isTrue())
 		            .verifyComplete();
 	}
@@ -332,9 +332,9 @@ public class MonoZipTest {
 				Mono.just(3),
 				Mono.just(4))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3 && v.getT4() == 4).isTrue())
 		            .verifyComplete();
 	}
@@ -349,9 +349,9 @@ public class MonoZipTest {
 				Mono.just(4),
 				Mono.just(5))
 		                        .subscribeWith(mp).asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3 && v.getT4() == 4 && v.getT5() == 5).isTrue())
 		            .verifyComplete();
 	}
@@ -368,10 +368,10 @@ public class MonoZipTest {
 				Mono.just(6))
 		                        .subscribeWith(mp)
 		                        .asMono())
-		            .then(() -> assertThat(mp.isError()).isFalse())
-		            .then(() -> assertThat(mp.isComplete()).isTrue())
-		            .then(() -> assertThat(mp.isValued()).isTrue())
-		            .then(() -> assertThat(mp.isTerminated()).isTrue())
+		            .then(() -> assertThat(mp.isError()).as("isError").isFalse())
+		            .then(() -> assertThat(mp.isComplete()).as("isComplete").isTrue())
+		            .then(() -> assertThat(mp.isValued()).as("isValued").isTrue())
+		            .then(() -> assertThat(mp.isTerminated()).as("isTerminated").isTrue())
 		            .assertNext(v -> assertThat(v.getT1() == 1 && v.getT2() == 2 && v.getT3() == 3 && v.getT4() == 4 && v.getT5() == 5 && v.getT6() == 6).isTrue())
 		            .verifyComplete();
 	}
