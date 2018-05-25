@@ -1639,8 +1639,18 @@ public abstract class Flux<T> implements Publisher<T> {
 			Function<? super D, ? extends Publisher<?>> commit,
 			Function<? super D, ? extends Publisher<?>> rollback,
 			Function<? super D, ? extends Publisher<? extends T>> transactionClosure) {
+		return transactional(transactionalResourceSupplier,
+				commit, rollback, transactionClosure, false);
+	}
+
+	public static <T, D> Flux<T> transactional(
+			Supplier<D> transactionalResourceSupplier,
+			Function<? super D, ? extends Publisher<?>> commit,
+			Function<? super D, ? extends Publisher<?>> rollback,
+			Function<? super D, ? extends Publisher<? extends T>> transactionClosure,
+			boolean rollbackOnCancel) {
 		return onAssembly(new FluxTransactional<>(transactionalResourceSupplier,
-				commit, rollback, transactionClosure));
+				commit, rollback, transactionClosure, rollbackOnCancel));
 	}
 
 	/**

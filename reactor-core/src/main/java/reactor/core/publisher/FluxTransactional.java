@@ -17,8 +17,8 @@
 package reactor.core.publisher;
 
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -27,6 +27,8 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.Exceptions;
 import reactor.core.Fuseable;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 /**
@@ -47,19 +49,24 @@ import reactor.util.annotation.Nullable;
  */
 final class FluxTransactional<T, S> extends Flux<T> implements Fuseable, SourceProducer<T> {
 
+	private static final Logger LOGGER = Loggers.getLogger(FluxTransactional.class);
+
 	final Supplier<S>                                           resourceSupplier;
 	final Function<? super S, ? extends Publisher<? extends T>> transactionClosure;
 	final Function<? super S, ? extends Publisher<?>>           commit;
 	final Function<? super S, ? extends Publisher<?>>           rollback;
+	final boolean                                               rollbackOnCancel;
 
 	FluxTransactional(Supplier<S> transactionalResourceSupplier,
 			Function<? super S, ? extends Publisher<?>> commit,
 			Function<? super S, ? extends Publisher<?>> rollback,
-			Function<? super S, ? extends Publisher<? extends T>> transactionClosure) {
+			Function<? super S, ? extends Publisher<? extends T>> transactionClosure,
+			boolean rollbackOnCancel) {
 		this.resourceSupplier = Objects.requireNonNull(transactionalResourceSupplier, "transactionalResourceSupplier");
 		this.transactionClosure = Objects.requireNonNull(transactionClosure, "transactionClosure");
 		this.commit = Objects.requireNonNull(commit, "commit");
 		this.rollback = Objects.requireNonNull(rollback, "rollback");
+		this.rollbackOnCancel = rollbackOnCancel;
 	}
 
 	@Override
@@ -68,7 +75,8 @@ final class FluxTransactional<T, S> extends Flux<T> implements Fuseable, SourceP
 		S resource;
 
 		try {
-			resource = resourceSupplier.get();
+			resource = Objects.requireNonNull(resourceSupplier.get(),
+					"The resourceSupplier returned a null value");
 		}
 		catch (Throwable e) {
 			Operators.error(actual, Operators.onOperatorError(e, actual.currentContext()));
@@ -79,10 +87,10 @@ final class FluxTransactional<T, S> extends Flux<T> implements Fuseable, SourceP
 
 		try {
 			p = Objects.requireNonNull(transactionClosure.apply(resource),
-					"The transactionClosure returned a null value");
+					"The transactionClosure function returned a null value");
 		}
 		catch (Throwable e) {
-			//TODO should a closure apply error translate to a rollback? (for now it will)
+			//TODO should a closure#apply error translate to a rollback? (for now it will)
 			p = Mono.error(e);
 		}
 
@@ -95,7 +103,8 @@ final class FluxTransactional<T, S> extends Flux<T> implements Fuseable, SourceP
 //					resource, commit, rollback));
 //		}
 //		else {
-			from(p).subscribe(new TransactionalSubscriber<>(actual, resource, commit, rollback));
+			from(p).subscribe(new TransactionalSubscriber<>(actual, resource,
+					commit, rollback, rollbackOnCancel));
 //		}
 	}
 
@@ -104,84 +113,104 @@ final class FluxTransactional<T, S> extends Flux<T> implements Fuseable, SourceP
 		return null; //no particular key to be represented, still useful in hooks
 	}
 
-	static final class TransactionalSubscriber<T, S> extends Operators.MultiSubscriptionSubscriber<T, T>
-			implements QueueSubscription<T> {
+	static final class TransactionalSubscriber<T, S> implements InnerOperator<T, T>,
+	                                                            QueueSubscription<T> {
 
+		final CoreSubscriber<? super T>                   actual;
+		final S                                           resource;
 		final Function<? super S, ? extends Publisher<?>> commit;
 		final Function<? super S, ? extends Publisher<?>> rollback;
+		final boolean                                     rollbackOnCancel;
 
-		final S resource;
-
-		Subscription s;
-		boolean isAfterTransaction;
+		volatile     Subscription s;
+		static final AtomicReferenceFieldUpdater<TransactionalSubscriber, Subscription> SUBSCRIPTION =
+				AtomicReferenceFieldUpdater.newUpdater(TransactionalSubscriber.class,
+						Subscription.class, "s");
 
 		volatile int wip;
-		@SuppressWarnings("rawtypes")
 		static final AtomicIntegerFieldUpdater<TransactionalSubscriber> WIP =
 				AtomicIntegerFieldUpdater.newUpdater(TransactionalSubscriber.class, "wip");
 
 		TransactionalSubscriber(CoreSubscriber<? super T> actual,
 				S resource,
 				Function<? super S, ? extends Publisher<?>> commit,
-				Function<? super S, ? extends Publisher<?>> rollback) {
-			super(actual);
+				Function<? super S, ? extends Publisher<?>> rollback,
+				boolean rollbackOnCancel) {
+			this.actual = actual;
 			this.resource = resource;
 			this.commit = commit;
 			this.rollback = rollback;
+			this.rollbackOnCancel = rollbackOnCancel;
 		}
 
 		@Override
+		public CoreSubscriber<? super T> actual() {
+			return this.actual;
+		}
+
 		@Nullable
 		public Object scanUnsafe(Attr key) {
 			if (key == Attr.TERMINATED || key == Attr.CANCELLED) return wip == 1;
 			if (key == Attr.PARENT) return s;
 
-			return super.scanUnsafe(key);
+			return InnerOperator.super.scanUnsafe(key);
+		}
+
+		@Override
+		public void request(long l) {
+			if (Operators.validate(l)) {
+				s.request(l);
+			}
 		}
 
 		@Override
 		public void cancel() {
-			super.cancel();
-			//FIXME better integration of rollback-on-cancel?
-			Flux.from(rollback.apply(resource)).subscribe();
+			if (Operators.terminate(SUBSCRIPTION, this)) {
+				try {
+					if (rollbackOnCancel) {
+						//FIXME better integration of rollback-on-cancel?
+						Flux.from(rollback.apply(resource)).subscribe();
+					}
+					else {
+						//FIXME better integration of commit-on-cancel?
+						Flux.from(commit.apply(resource)).subscribe();
+					}
+				}
+				catch (Throwable error) {
+					LOGGER.warn("Error during transactional cancellation", error);
+				}
+			}
 		}
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			if (!isAfterTransaction) {
+			if (Operators.validate(this.s, s)) {
+				this.s = s;
 				actual.onSubscribe(this);
 			}
-			set(s);
 		}
 
 		@Override
 		public void onNext(T t) {
-			if (!isAfterTransaction) {
-				producedOne();
-				actual.onNext(t);
-			}
+			actual.onNext(t);
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			if (!isAfterTransaction) {
-				isAfterTransaction = true;
+			Publisher<?> p;
 
-				Publisher<?> p;
-
-				try {
-					p = Objects.requireNonNull(rollback.apply(resource),
-							"The rollback returned a null Publisher");
-				}
-				catch (Throwable e) {
-					Throwable _e = Operators.onOperatorError(e, actual.currentContext());
-					_e = Exceptions.addSuppressed(_e, t);
-					actual.onError(_e);
-					return;
-				}
-
-				p.subscribe(new RollbackInner(this, t));
+			try {
+				p = Objects.requireNonNull(rollback.apply(resource),
+						"The rollback returned a null Publisher");
 			}
+			catch (Throwable e) {
+				Throwable _e = Operators.onOperatorError(e, actual.currentContext());
+				_e = Exceptions.addSuppressed(_e, t);
+				actual.onError(_e);
+				return;
+			}
+
+			p.subscribe(new RollbackInner(this, t));
 		}
 
 		@Override
