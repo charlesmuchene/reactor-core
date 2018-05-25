@@ -1634,6 +1634,15 @@ public abstract class Flux<T> implements Publisher<T> {
 				eager));
 	}
 
+	public static <T, D> Flux<T> transactional(
+			Supplier<D> transactionalResourceSupplier,
+			Function<? super D, ? extends Publisher<?>> commit,
+			Function<? super D, ? extends Publisher<?>> rollback,
+			Function<? super D, ? extends Publisher<? extends T>> transactionClosure) {
+		return onAssembly(new FluxTransactional<>(transactionalResourceSupplier,
+				commit, rollback, transactionClosure));
+	}
+
 	/**
 	 * Zip two sources together, that is to say wait for all the sources to emit one
 	 * element and combine these elements once into an output value (constructed by the provided
